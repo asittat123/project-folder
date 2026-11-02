@@ -1,99 +1,107 @@
-import os
-import joblib
+import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
+import pickle
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.metrics import (
     accuracy_score,
     roc_auc_score,
     precision_score,
     recall_score,
     f1_score,
-    matthews_corrcoef
+    matthews_corrcoef,
+    confusion_matrix,
+    classification_report
 )
 
-# Models
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.svm import SVC
+st.set_page_config(page_title="Heart Disease Classifier Dashboard", layout="wide")
 
-# Create model directory
-os.makedirs("model", exist_ok=True)
+st.title("Heart Disease Classification & Model Evaluation")
+st.markdown("BITS Pilani M.Tech (AIML) - Machine Learning Assignment 2 Dashboard")
 
-# 1. Load Dataset
-df = pd.read_csv("heart.csv")
+st.sidebar.header("User Controls")
 
-X = df.drop(columns=["HeartDisease"])
-y = df["HeartDisease"]
-
-# Identify column types
-categorical_cols = X.select_dtypes(include=["object"]).columns.tolist()
-numeric_cols = X.select_dtypes(include=["int64", "float64"]).columns.tolist()
-
-# 2. Train-Test Split (80-20, Stratified)
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.20, random_state=42, stratify=y
+# Feature a: CSV Upload Option
+uploaded_file = st.sidebar.file_uploader(
+    "Upload Test CSV (test_data.csv)", 
+    type=["csv"]
 )
 
-# 3. Export test_data.csv for Streamlit UI upload
-test_export = X_test.copy()
-test_export["HeartDisease"] = y_test
-test_export.to_csv("test_data.csv", index=False)
-print("Saved test_data.csv successfully (184 test records).")
-
-# 4. Preprocessing Pipeline
-preprocessor = ColumnTransformer(
-    transformers=[
-        ("num", StandardScaler(), numeric_cols),
-        ("cat", OneHotEncoder(drop="first", sparse_output=False), categorical_cols)
-    ]
-)
-
-# 5. Model Definitions
-models = {
-    "Logistic Regression": LogisticRegression(random_state=42, max_iter=1000),
-    "Decision Tree": DecisionTreeClassifier(random_state=42, max_depth=5),
-    "KNN": KNeighborsClassifier(n_neighbors=7),
-    "Naive Bayes": GaussianNB(),
-    "Support Vector Machine": SVC(kernel="rbf", probability=True, random_state=42)
+# Feature b: Model Selection Dropdown (.pkl files)
+model_mapping = {
+    "Logistic Regression": "model/logistic_regression.pkl",
+    "Decision Tree": "model/decision_tree.pkl",
+    "KNN": "model/knn.pkl",
+    "Naive Bayes": "model/naive_bayes.pkl",
+    "Support Vector Machine": "model/support_vector_machine.pkl"
 }
 
-results = []
+selected_model = st.sidebar.selectbox("Choose Classification Model", list(model_mapping.keys()))
 
-print("\n--- Training and Evaluating Models ---")
-for name, clf in models.items():
-    # Bundle preprocessor with classifier to prevent test leakage
-    pipeline = Pipeline([
-        ("preprocessor", preprocessor),
-        ("classifier", clf)
-    ])
+if uploaded_file is not None:
+    test_df = pd.read_csv(uploaded_file)
     
-    # Train
-    pipeline.fit(X_train, y_train)
+    st.subheader("Uploaded Test Data Preview")
+    st.dataframe(test_df.head(), use_container_width=True)
     
-    # Save Model Pipeline
-    filename = name.lower().replace(" ", "_") + ".joblib"
-    joblib.dump(pipeline, os.path.join("model", filename))
+    target_column = None
+    for candidate in ["HeartDisease", "target", "class", "output"]:
+        if candidate in test_df.columns:
+            target_column = candidate
+            break
+            
+    if target_column is None:
+        target_column = st.sidebar.selectbox("Select Target Column", test_df.columns)
+        
+    X_test = test_df.drop(columns=[target_column])
+    y_test = test_df[target_column].astype(int)
     
-    # Predict on unseen test set
-    y_pred = pipeline.predict(X_test)
-    y_prob = pipeline.predict_proba(X_test)[:, 1]
-    
-    # Calculate required metrics
-    results.append({
-        "ML Model Name": name,
-        "Accuracy": round(accuracy_score(y_test, y_pred), 4),
-        "AUC": round(roc_auc_score(y_test, y_prob), 4),
-        "Precision": round(precision_score(y_test, y_pred), 4),
-        "Recall": round(recall_score(y_test, y_pred), 4),
-        "F1": round(f1_score(y_test, y_pred), 4),
-        "MCC": round(matthews_corrcoef(y_test, y_pred), 4)
-    })
-
-results_df = pd.DataFrame(results)
-print("\nEvaluation Results Table:")
-print(results_df.to_markdown(index=False))
+    # Load Model Pipeline with standard pickle
+    model_path = model_mapping[selected_model]
+    if os.path.exists(model_path):
+        with open(model_path, "rb") as f:
+            pipeline = pickle.load(f)
+        
+        y_pred = pipeline.predict(X_test)
+        y_prob = pipeline.predict_proba(X_test)[:, 1]
+        
+        acc = accuracy_score(y_test, y_pred)
+        auc = roc_auc_score(y_test, y_prob)
+        prec = precision_score(y_test, y_pred, zero_division=0)
+        rec = recall_score(y_test, y_pred, zero_division=0)
+        f1 = f1_score(y_test, y_pred, zero_division=0)
+        mcc = matthews_corrcoef(y_test, y_pred)
+        
+        st.subheader(f"Evaluation Metrics: {selected_model}")
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        col1.metric("Accuracy", f"{acc:.4f}")
+        col2.metric("AUC Score", f"{auc:.4f}")
+        col3.metric("Precision", f"{prec:.4f}")
+        col4.metric("Recall", f"{rec:.4f}")
+        col5.metric("F1 Score", f"{f1:.4f}")
+        col6.metric("MCC Score", f"{mcc:.4f}")
+        
+        st.markdown("---")
+        
+        c_left, c_right = st.columns([1, 1])
+        
+        with c_left:
+            st.subheader("Confusion Matrix")
+            cm = confusion_matrix(y_test, y_pred)
+            fig, ax = plt.subplots(figsize=(4, 3))
+            sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False, ax=ax)
+            ax.set_xlabel("Predicted Label")
+            ax.set_ylabel("True Label")
+            st.pyplot(fig)
+            
+        with c_right:
+            st.subheader("Classification Report")
+            report = classification_report(y_test, y_pred, output_dict=True)
+            report_df = pd.DataFrame(report).transpose()
+            st.dataframe(report_df.style.format("{:.4f}"), use_container_width=True)
+            
+    else:
+        st.error(f"Saved model binary not found at `{model_path}`.")
+else:
+    st.info("Please upload `test_data.csv` via the sidebar to evaluate the models.")
