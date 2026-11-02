@@ -35,12 +35,6 @@ Five core machine learning classifiers are implemented, evaluated, serialized, a
 
 ---
 
-## c. GitHub Repository Link
-* **GitHub Repository**: `https://github.com/<your-github-username>/<your-repo-name>`
-* **Live Streamlit App**: `https://<your-app-subdomain>.streamlit.app/`
-
----
-
 ## d. Models Used
 
 ### Evaluation Metrics Comparison Table
