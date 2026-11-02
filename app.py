@@ -1,7 +1,7 @@
+import os
+import pickle
 import streamlit as st
 import pandas as pd
-import pickle
-import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import (
@@ -15,35 +15,48 @@ from sklearn.metrics import (
     classification_report
 )
 
+# Define base directory
+BASE_DIR = "/home/s2026aj05525/Downloads"
+model_dir = os.path.join(BASE_DIR, "model")
+
 st.set_page_config(page_title="Heart Disease Classifier Dashboard", layout="wide")
 
-st.title("Heart Disease Classification & Model Evaluation")
-st.markdown("BITS Pilani M.Tech (AIML) - Machine Learning Assignment 2 Dashboard")
+st.title("❤️ Heart Disease Classification & Model Evaluation")
+st.markdown("### BITS Pilani M.Tech (AIML) - Machine Learning Assignment 2 Dashboard")
 
 st.sidebar.header("User Controls")
 
-# Feature a: CSV Upload Option
+# CSV Upload Option
 uploaded_file = st.sidebar.file_uploader(
     "Upload Test CSV (test_data.csv)", 
     type=["csv"]
 )
 
-# Feature b: Model Selection Dropdown (.pkl files)
+# Model Selection Dropdown with absolute paths
 model_mapping = {
-    "Logistic Regression": "model/logistic_regression.pkl",
-    "Decision Tree": "model/decision_tree.pkl",
-    "KNN": "model/knn.pkl",
-    "Naive Bayes": "model/naive_bayes.pkl",
-    "Support Vector Machine": "model/support_vector_machine.pkl"
+    "Logistic Regression": os.path.join(model_dir, "logistic_regression.pkl"),
+    "Decision Tree": os.path.join(model_dir, "decision_tree.pkl"),
+    "KNN": os.path.join(model_dir, "knn.pkl"),
+    "Naive Bayes": os.path.join(model_dir, "naive_bayes.pkl"),
+    "Support Vector Machine": os.path.join(model_dir, "support_vector_machine.pkl")
 }
 
 selected_model = st.sidebar.selectbox("Choose Classification Model", list(model_mapping.keys()))
 
+# Fallback to default test_data.csv if none uploaded
 if uploaded_file is not None:
     test_df = pd.read_csv(uploaded_file)
-    
-    st.subheader("Uploaded Test Data Preview")
-    st.dataframe(test_df.head(), use_container_width=True)
+else:
+    default_test_path = os.path.join(BASE_DIR, "test_data.csv")
+    if os.path.exists(default_test_path):
+        st.sidebar.info("Using default `test_data.csv` from Downloads folder.")
+        test_df = pd.read_csv(default_test_path)
+    else:
+        test_df = None
+
+if test_df is not None:
+    st.subheader("Test Data Preview")
+    st.dataframe(test_df.head(), width='stretch')
     
     target_column = None
     for candidate in ["HeartDisease", "target", "class", "output"]:
@@ -57,7 +70,7 @@ if uploaded_file is not None:
     X_test = test_df.drop(columns=[target_column])
     y_test = test_df[target_column].astype(int)
     
-    # Load Model Pipeline with standard pickle
+    # Load Model Pipeline
     model_path = model_mapping[selected_model]
     if os.path.exists(model_path):
         with open(model_path, "rb") as f:
@@ -99,9 +112,9 @@ if uploaded_file is not None:
             st.subheader("Classification Report")
             report = classification_report(y_test, y_pred, output_dict=True)
             report_df = pd.DataFrame(report).transpose()
-            st.dataframe(report_df.style.format("{:.4f}"), use_container_width=True)
+            st.dataframe(report_df.style.format("{:.4f}"), width='stretch')
             
     else:
-        st.error(f"Saved model binary not found at `{model_path}`.")
+        st.error(f"Saved model binary not found at `{model_path}`. Please run your model training script first.")
 else:
-    st.info("Please upload `test_data.csv` via the sidebar to evaluate the models.")
+    st.info("Please upload `test_data.csv` via the sidebar or ensure it exists in your Downloads folder.")
