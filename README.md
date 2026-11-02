@@ -35,7 +35,7 @@ Five core machine learning classifiers are implemented, evaluated, serialized, a
 
 ---
 
-## d. Models Used
+## c. Models Used
 
 ### Evaluation Metrics Comparison Table
 
@@ -49,7 +49,7 @@ Five core machine learning classifiers are implemented, evaluated, serialized, a
 
 ---
 
-## e. Observations on Model Performance
+## d. Observations on Model Performance
 
 | ML Model Name | Observation about model performance |
 | :--- | :--- |
