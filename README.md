@@ -33,6 +33,10 @@ Five core machine learning classifiers are implemented, evaluated, serialized, a
 10. `Oldpeak`: ST depression induced by exercise relative to rest [numeric]
 11. `ST_Slope`: The slope of the peak exercise ST segment [`Up`: Upsloping, `Flat`: Flat, `Down`: Downsloping]
 
+## c. GitHub Repository Link
+- **GitHub Repository**: https://github.com/asittat123/project-folder/tree/main
+- **Streamlit Live Application**: Heart Disease Classifier Dashboard · Streamlit
+
 ---
 
 ## c. Models Used
